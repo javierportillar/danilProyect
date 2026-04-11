@@ -18,13 +18,15 @@ def api_productos():
     )
 
     productos = (
-        Producto.query.order_by(order_categoria, Producto.nombre.asc())
+        Producto.query.filter_by(activo=True)
+        .order_by(order_categoria, Producto.nombre.asc())
         .with_entities(
             Producto.id,
             Producto.codigo,
             Producto.nombre,
             Producto.precio,
             Producto.categoria,
+            Producto.activo,
         )
         .all()
     )
@@ -37,6 +39,7 @@ def api_productos():
                 "nombre": p.nombre,
                 "precio": p.precio,
                 "categoria": p.categoria,
+                "activo": p.activo,
             }
             for p in productos
         ]

@@ -1,2 +1,2 @@
 [start]
-cmd = "gunicorn wsgi:app"
+cmd = "gunicorn --config gunicorn.conf.py wsgi:app"

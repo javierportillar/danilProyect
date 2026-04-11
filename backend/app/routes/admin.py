@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-from flask import Blueprint, jsonify, session
+from flask import Blueprint, current_app, jsonify, session
 from sqlalchemy import extract, func
 
 from ..models import Producto, Usuario, Venta
@@ -78,5 +78,6 @@ def api_estadisticas():
                 "top_productos": [],
             }
         )
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+    except Exception:
+        current_app.logger.exception("Error in /api/estadisticas")
+        return jsonify({"error": "Error interno del servidor"}), 500

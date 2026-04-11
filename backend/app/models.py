@@ -21,6 +21,7 @@ class Producto(db.Model):
     nombre = db.Column(db.String(120), nullable=False)
     precio = db.Column(db.Integer, nullable=False)
     categoria = db.Column(db.String(40))
+    activo = db.Column(db.Boolean, default=True, nullable=False)
 
 
 class Venta(db.Model):

@@ -1,6 +1,7 @@
-from flask import Blueprint, jsonify, request, session
-from werkzeug.security import check_password_hash
+from flask import Blueprint, current_app, jsonify, request, session
+from werkzeug.security import check_password_hash, generate_password_hash
 
+from ..extensions import db
 from ..models import Usuario
 
 
@@ -23,7 +24,18 @@ def api_login():
         if not user:
             return jsonify({"success": False, "error": "Credenciales inválidas"}), 401
 
-        valid_password = check_password_hash(user.password, password) or user.password == password
+        stored_password = user.password or ""
+        valid_password = False
+
+        if stored_password.startswith("pbkdf2:") or stored_password.startswith("scrypt:"):
+            valid_password = check_password_hash(stored_password, password)
+        else:
+            # Backward compatibility for legacy plain-text users.
+            valid_password = stored_password == password
+            if valid_password:
+                user.password = generate_password_hash(password)
+                db.session.commit()
+
         if not valid_password:
             return jsonify({"success": False, "error": "Credenciales inválidas"}), 401
 
@@ -31,6 +43,7 @@ def api_login():
         session["username"] = user.username
         session["rol"] = user.rol
         session["nombre"] = user.nombre
+        session.permanent = True
 
         return jsonify(
             {
@@ -43,8 +56,9 @@ def api_login():
                 },
             }
         )
-    except Exception as exc:
-        return jsonify({"success": False, "error": str(exc)}), 500
+    except Exception:
+        current_app.logger.exception("Error in /api/login")
+        return jsonify({"success": False, "error": "Error interno del servidor"}), 500
 
 
 @auth_bp.get("/session")

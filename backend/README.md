@@ -1,12 +1,6 @@
-# Backend (Flask + SQLAlchemy + Supabase Postgres)
+# Backend (Flask + Supabase Postgres)
 
-## Estructura
-
-- `app/`: configuración, modelos, rutas y seed
-- `scripts/`: utilidades (incluye migración desde SQLite legado)
-- `legacy/`: código/archivos antiguos movidos desde la raíz
-
-## Setup local (desde `backend/`)
+## 1) Setup local
 
 ```bash
 cd backend
@@ -16,46 +10,42 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-## Inicializar base de datos
+## 2) Variables críticas para producción
+
+- `DATABASE_URL`: URL de Supabase con `sslmode=require`
+- `CORS_ORIGINS`: dominio real del frontend (ej. `https://app.tudominio.com`)
+- `SECRET_KEY`: valor largo y aleatorio
+- `SESSION_COOKIE_SECURE=true`
+- `SESSION_COOKIE_SAMESITE=None` (si front y back van en dominios distintos)
+
+## 3) Inicializar esquema y seed
 
 ```bash
 cd backend
 flask --app wsgi init-db
 ```
 
-## Ejecutar backend
+Si prefieres SQL directo en Supabase, usa:
+
+- `schema_supabase.sql`
+
+## 4) Ejecutar local
 
 ```bash
 cd backend
 flask --app wsgi run --debug
 ```
 
-## Migraciones de esquema
+## 5) Deploy backend (Render/Railway/Fly)
 
-```bash
-cd backend
-flask --app wsgi db init
-flask --app wsgi db migrate -m "init schema"
-flask --app wsgi db upgrade
-```
+- Root directory: `backend`
+- Start command: `gunicorn --config gunicorn.conf.py wsgi:app`
+- Health check: `/health` o `/api/health`
 
-## Migrar datos del SQLite legado a Supabase
+## 6) Migrar datos desde SQLite legado a Supabase
 
 ```bash
 cd backend
 SQLITE_PATH=./legacy/database.db DATABASE_URL="<tu-url-supabase>" \
 python scripts/migrate_sqlite_to_postgres.py
 ```
-
-## Variables que debes poner para deploy
-
-- `SECRET_KEY`
-- `DATABASE_URL` (la de Supabase)
-- `CORS_ORIGINS` (dominio(s) reales del frontend)
-- `SESSION_COOKIE_SECURE=true`
-- `SESSION_COOKIE_SAMESITE=None`
-
-## Comando de arranque en plataforma
-
-- `gunicorn wsgi:app`
-- Root directory del servicio: `backend`

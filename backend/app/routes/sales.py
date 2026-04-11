@@ -1,10 +1,12 @@
-from flask import Blueprint, jsonify, request, session
+from flask import Blueprint, current_app, jsonify, request, session
 
 from ..extensions import db
-from ..models import Venta
+from ..models import Producto, Venta
 
 
 sales_bp = Blueprint("sales", __name__)
+
+ALLOWED_PAYMENT_METHODS = {"efectivo", "transferencia", "tarjeta"}
 
 
 @sales_bp.post("/ventas")
@@ -17,16 +19,27 @@ def api_registrar_venta():
         productos = data.get("productos", [])
         metodo_pago = data.get("metodo_pago", "efectivo")
 
-        if not productos:
+        if metodo_pago not in ALLOWED_PAYMENT_METHODS:
+            return jsonify({"error": "Método de pago inválido"}), 400
+
+        if not isinstance(productos, list) or not productos:
             return jsonify({"error": "No hay productos en la venta"}), 400
 
         total_general = 0
         ventas = []
 
         for item in productos:
-            producto_id = item["producto_id"]
-            cantidad = int(item["cantidad"])
-            precio = int(item["precio"])
+            producto_id = item.get("producto_id")
+            cantidad = int(item.get("cantidad", 0))
+
+            if not producto_id or cantidad <= 0:
+                return jsonify({"error": "Producto o cantidad inválida"}), 400
+
+            producto = Producto.query.filter_by(id=producto_id, activo=True).first()
+            if not producto:
+                return jsonify({"error": f"Producto inválido o inactivo: {producto_id}"}), 400
+
+            precio = int(producto.precio)
             total = precio * cantidad
             total_general += total
 
@@ -52,6 +65,10 @@ def api_registrar_venta():
                 "cantidad_productos": len(productos),
             }
         )
-    except Exception as exc:
+    except ValueError:
         db.session.rollback()
-        return jsonify({"error": str(exc)}), 500
+        return jsonify({"error": "Formato numérico inválido"}), 400
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Error in /api/ventas")
+        return jsonify({"error": "Error interno del servidor"}), 500
